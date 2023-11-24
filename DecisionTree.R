@@ -85,3 +85,66 @@ DecisionTree <- function(data, max_depth = Inf, min_samples = 3) {
   return(tree)
 }
 
+# Función para imprimir la información del árbol de decisión en una tabla
+print_decision_tree <- function(tree, level = 0, direction = NA) {
+  # Inicializar un dataframe para almacenar la información del árbol
+  tree_data <- data.frame(Level = integer(), Type = character(), Feature = character(),
+                          Threshold = numeric(), Direction = character(), Class_Distribution = character(),
+                          stringsAsFactors = FALSE)
+  
+  # Función interna para recorrer el árbol y agregar los nodos al dataframe
+  traverse_tree <- function(tree, level, direction) {
+    if (tree$node_type == "leaf") {
+      leaf_data <- data.frame(Level = level, Type = "Leaf", Feature = NA, Threshold = NA,
+                              Direction = direction, Class_Distribution = toString(tree$class_distribution))
+      tree_data <<- rbind(tree_data, leaf_data)
+    } else {
+      type <- ifelse(level == 0, "Root", "Decision")
+      decision_data <- data.frame(Level = level, Type = type, Feature = tree$feature,
+                                  Threshold = tree$threshold, 
+                                  Direction = direction, Class_Distribution = NA)
+      tree_data <<- rbind(tree_data, decision_data)
+      traverse_tree(tree$left, level + 1, "Left")
+      traverse_tree(tree$right, level + 1, "Right")
+    }
+  }
+  
+  # Llamar a la función para construir el dataframe
+  traverse_tree(tree, level, direction)
+  
+  # Ordenar el dataframe por nivel
+  tree_data <- tree_data[order(tree_data$Level), ]
+  
+  # Imprimir el árbol (dataframe)
+  print(tree_data, row.names = FALSE)
+}
+
+
+# Función para realizar predicciones con el árbol de decisión
+predict_decision_tree <- function(tree, data) {
+  predictions <- character()
+  
+  # Función para realizar la predicción en una instancia
+  predict_instance <- function(tree, instance) {
+    if (tree$node_type == "leaf") {
+      # En un nodo de hoja, devuelve la clase dominante
+      return(names(tree$class_distribution)[which.max(tree$class_distribution)])
+    } else {
+      # En un nodo de decisión, decide hacia qué rama ir
+      if (instance[tree$feature] <= tree$threshold) {
+        return(predict_instance(tree$left, instance))
+      } else {
+        return(predict_instance(tree$right, instance))
+      }
+    }
+  }
+  
+  # Aplicar la predicción a cada instancia en el conjunto de datos
+  for (i in 1:nrow(data)) {
+    instance <- data[i, ]
+    prediction <- predict_instance(tree, instance)
+    predictions <- c(predictions, prediction)
+  }
+  
+  return(predictions)
+}
